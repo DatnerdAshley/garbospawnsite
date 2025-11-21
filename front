@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Editable Sandbox Site</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+        }
+
+        #panel {
+            width: 250px;
+            background: #222;
+            color: white;
+            padding: 15px;
+            height: 100vh;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        #workspace {
+            flex: 1;
+            background: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tool-title {
+            font-size: 18px;
+            margin-top: 15px;
+            margin-bottom: 5px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+        }
+
+        /* All new stacked layers appear absolutely */
+        .bg-layer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        #workspace img, 
+        #workspace div.text-element {
+            position: absolute;
+            cursor: move;
+        }
+
+        #workspace canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        #textInput {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="panel">
+    <h2>Control Panel</h2>
+
+    <div class="tool-title">Background</div>
+    <input type="color" id="bgColorPicker">
+    <button onclick="changeBG()">Apply</button>
+
+    <div class="tool-title">Add Text</div>
+    <textarea id="textInput" placeholder="Type text..."></textarea>
+    <button onclick="addText()">Add Text</button>
+
+    <div class="tool-title">Add Image / GIF</div>
+    <input type="file" id="imageInput" accept="image/*">
+    <button onclick="addImage()">Add Image</button>
+
+    <div class="tool-title">Spam Images</div>
+    <input type="file" id="spamInput" accept="image/*" multiple>
+    <button onclick="spamImages()">SPAM</button>
+
+    <div class="tool-title">Draw</div>
+    <button onclick="toggleDraw()">Toggle Drawing</button>
+</div>
+
+<div id="workspace">
+    <canvas id="drawCanvas"></canvas>
+</div>
+
+<script>
+    const workspace = document.getElementById("workspace");
+    const canvas = document.getElementById("drawCanvas");
+    const ctx = canvas.getContext("2d");
+
+    canvas.width = workspace.clientWidth;
+    canvas.height = workspace.clientHeight;
+
+    let drawing = false;
+    let drawingEnabled = false;
+
+    function toggleDraw() {
+        drawingEnabled = !drawingEnabled;
+        alert("Drawing: " + (drawingEnabled ? "ON" : "OFF"));
+    }
+
+    canvas.addEventListener("mousedown", e => {
+        if (!drawingEnabled) return;
+        drawing = true;
+        ctx.beginPath();
+        ctx.moveTo(e.offsetX, e.offsetY);
+    });
+
+    canvas.addEventListener("mousemove", e => {
+        if (!drawingEnabled || !drawing) return;
+        ctx.lineTo(e.offsetX, e.offsetY);
+        ctx.stroke();
+    });
+
+    canvas.addEventListener("mouseup", () => drawing = false);
+
+    // ---------------------------------------
+    // BACKGROUND STACKING LAYERS (NEW LOGIC)
+    // ---------------------------------------
+    function changeBG() {
+        const color = document.getElementById("bgColorPicker").value;
+
+        const layer = document.createElement("div");
+        layer.className = "bg-layer";
+        layer.style.background = color;
+        layer.style.opacity = "0.5"; // stack effect
+
+        workspace.appendChild(layer);
+    }
+
+    // ---------------------------------------
+    // TEXT STACKING (NEW LOGIC)
+    // Always in same position
+    // ---------------------------------------
+    function addText() {
+        const text = document.getElementById("textInput").value;
+        if (!text.trim()) return;
+
+        const div = document.createElement("div");
+        div.className = "text-element";
+        div.textContent = text;
+
+        // Same coordinates for stacking
+        div.style.left = "50px";  
+        div.style.top = "50px";  
+        div.style.fontSize = "24px";
+        div.style.color = "black";
+
+        makeDraggable(div);
+        workspace.appendChild(div);
+    }
+
+    function addImage() {
+        const file = document.getElementById("imageInput").files[0];
+        if (!file) return;
+
+        const img = document.createElement("img");
+        img.src = URL.createObjectURL(file);
+        img.style.width = "200px";
+
+        img.style.left = Math.random() * (workspace.clientWidth - 200) + "px";
+        img.style.top = Math.random() * (workspace.clientHeight - 200) + "px";
+
+        makeDraggable(img);
+        workspace.appendChild(img);
+    }
+
+    function spamImages() {
+        const files = document.getElementById("spamInput").files;
+        if (!files.length) return;
+
+        for (let file of files) {
+            const img = document.createElement("img");
+            img.src = URL.createObjectURL(file);
+            img.style.width = "120px";
+
+            img.style.left = Math.random() * (workspace.clientWidth - 120) + "px";
+            img.style.top = Math.random() * (workspace.clientHeight - 120) + "px";
+
+            makeDraggable(img);
+            workspace.appendChild(img);
+        }
+    }
+
+    // Dragging logic
+    function makeDraggable(el) {
+        el.onmousedown = function (e) {
+            const shiftX = e.clientX - el.getBoundingClientRect().left;
+            const shiftY = e.clientY - el.getBoundingClientRect().top;
+
+            function moveAt(e) {
+                el.style.left = e.clientX - shiftX + "px";
+                el.style.top = e.clientY - shiftY + "px";
+            }
+
+            document.addEventListener("mousemove", moveAt);
+
+            document.onmouseup = () => {
+                document.removeEventListener("mousemove", moveAt);
+                document.onmouseup = null;
+            };
+        };
+    }
+</script>
+
+</body>
+</html>
