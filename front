@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>User Editable Sandbox Site</title>
+    <meta charset="UTF-8">
+    <title>User Editable Sandbox</title>
     <style>
         body {
             margin: 0;
             font-family: Arial, sans-serif;
             display: flex;
         }
-
         #panel {
             width: 250px;
             background: #222;
@@ -18,14 +18,12 @@
             box-sizing: border-box;
             overflow-y: auto;
         }
-
         #workspace {
             flex: 1;
             background: white;
             position: relative;
             overflow: hidden;
         }
-
         .tool-title {
             font-size: 18px;
             margin-top: 15px;
@@ -33,82 +31,65 @@
             border-bottom: 1px solid #444;
             padding-bottom: 5px;
         }
-
         .bg-layer {
             position: absolute;
             width: 100%;
             height: 100%;
             pointer-events: none;
         }
-
-        #workspace img, 
-        #workspace div.text-element {
+        #workspace img, #workspace .text-element {
             position: absolute;
             cursor: move;
         }
-
         #workspace canvas {
             position: absolute;
             top: 0;
             left: 0;
         }
-
         #textInput {
             width: 100%;
             margin-bottom: 10px;
         }
-
-        /* Apocalypse overlay styles */
         #apocalypseWarning {
             position: fixed;
-            top: 0;
-            left: 0;
+            top:0; left:0;
             width: 100%;
             height: 100%;
             background: rgba(0,0,0,0.9);
-            color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
+            color:white;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            z-index:9999;
         }
-
         #warningContent {
-            text-align: center;
-            background: #330000;
-            padding: 30px;
-            border: 2px solid red;
-            border-radius: 10px;
+            text-align:center;
+            background:#330000;
+            padding:30px;
+            border:2px solid red;
+            border-radius:10px;
         }
-        #warningContent h1 {
-            font-size: 36px;
-            margin-bottom: 20px;
-        }
-        #warningContent p {
-            font-size: 20px;
-            margin-bottom: 20px;
-        }
+        #warningContent h1 { font-size:36px; margin-bottom:20px; }
+        #warningContent p { font-size:20px; margin-bottom:20px; }
         #warningContent button {
-            padding: 10px 20px;
-            font-size: 18px;
-            cursor: pointer;
+            padding:10px 20px;
+            font-size:18px;
+            cursor:pointer;
         }
     </style>
 </head>
 <body>
 
-<!-- Apocalypse Warning Overlay -->
 <div id="apocalypseWarning">
     <div id="warningContent">
         <h1>⚠ WARNING ⚠</h1>
-        <p>epilepsy warning: This site contains flashing colors images etc use at your own risk!</p>
+        <p>epilepsy warning:This site has flashing colors and images!</p>
         <button onclick="dismissWarning()">I understand</button>
     </div>
 </div>
 
 <div id="panel">
     <h2>Control Panel</h2>
-
     <div class="tool-title">Background</div>
     <input type="color" id="bgColorPicker">
     <button onclick="changeBG()">Apply</button>
@@ -144,10 +125,7 @@ canvas.height = workspace.clientHeight;
 let drawing = false;
 let drawingEnabled = false;
 
-// ----------------------------
-// Apocalypse overlay
-// ----------------------------
-function dismissWarning() {
+function dismissWarning(){
     document.getElementById("apocalypseWarning").style.display = "none";
 }
 
@@ -155,198 +133,53 @@ function dismissWarning() {
 // SAVE / LOAD SYSTEM
 // ----------------------------
 function saveWorkspace() {
-    const data = {
-        bgLayers: [],
-        texts: [],
-        images: [],
-        drawing: canvas.toDataURL()
-    };
-
-    // Save background layers
-    document.querySelectorAll(".bg-layer").forEach(layer => {
-        data.bgLayers.push({ color: layer.style.background, opacity: layer.style.opacity });
-    });
-
-    // Save text elements
-    document.querySelectorAll(".text-element").forEach(el => {
-        data.texts.push({
-            text: el.textContent,
-            left: el.style.left,
-            top: el.style.top,
-            color: el.style.color,
-            fontSize: el.style.fontSize
-        });
-    });
-
-    // Save images
-    document.querySelectorAll("#workspace img").forEach(img => {
-        data.images.push({
-            src: img.src,
-            left: img.style.left,
-            top: img.style.top,
-            width: img.style.width
-        });
-    });
-
-    localStorage.setItem("sandboxData", JSON.stringify(data));
+    const data = { bgLayers: [], texts: [], images: [], drawing: canvas.toDataURL() };
+    document.querySelectorAll(".bg-layer").forEach(layer => data.bgLayers.push({color:layer.style.background,opacity:layer.style.opacity}));
+    document.querySelectorAll(".text-element").forEach(el=>data.texts.push({text:el.textContent,left:el.style.left,top:el.style.top,color:el.style.color,fontSize:el.style.fontSize}));
+    document.querySelectorAll("#workspace img").forEach(img=>data.images.push({src:img.src,left:img.style.left,top:img.style.top,width:img.style.width}));
+    localStorage.setItem("sandboxData",JSON.stringify(data));
 }
 
 function loadWorkspace() {
     const data = JSON.parse(localStorage.getItem("sandboxData"));
-    if (!data) return;
-
-    // Restore background layers
-    data.bgLayers.forEach(layer => {
-        const div = document.createElement("div");
-        div.className = "bg-layer";
-        div.style.background = layer.color;
-        div.style.opacity = layer.opacity;
-        workspace.appendChild(div);
-    });
-
-    // Restore texts
-    data.texts.forEach(t => {
-        const div = document.createElement("div");
-        div.className = "text-element";
-        div.textContent = t.text;
-        div.style.left = t.left;
-        div.style.top = t.top;
-        div.style.color = t.color;
-        div.style.fontSize = t.fontSize;
-        makeDraggable(div);
-        workspace.appendChild(div);
-    });
-
-    // Restore images
-    data.images.forEach(i => {
-        const img = document.createElement("img");
-        img.src = i.src;
-        img.style.left = i.left;
-        img.style.top = i.top;
-        img.style.width = i.width;
-        makeDraggable(img);
-        workspace.appendChild(img);
-    });
-
-    // Restore drawing
-    if (data.drawing) {
-        const drawingImg = new Image();
-        drawingImg.src = data.drawing;
-        drawingImg.onload = () => ctx.drawImage(drawingImg, 0, 0);
-    }
+    if(!data) return;
+    data.bgLayers.forEach(layer=>{const div=document.createElement("div");div.className="bg-layer";div.style.background=layer.color;div.style.opacity=layer.opacity;workspace.appendChild(div)});
+    data.texts.forEach(t=>{const div=document.createElement("div");div.className="text-element";div.textContent=t.text;div.style.left=t.left;div.style.top=t.top;div.style.color=t.color;div.style.fontSize=t.fontSize;makeDraggable(div);workspace.appendChild(div)});
+    data.images.forEach(i=>{const img=document.createElement("img");img.src=i.src;img.style.left=i.left;img.style.top=i.top;img.style.width=i.width;makeDraggable(img);workspace.appendChild(img)});
+    if(data.drawing){const img=new Image();img.src=data.drawing;img.onload=()=>ctx.drawImage(img,0,0);}
 }
 
 // ----------------------------
 // Drawing
 // ----------------------------
-function toggleDraw() {
-    drawingEnabled = !drawingEnabled;
-    alert("Drawing: " + (drawingEnabled ? "ON" : "OFF"));
-}
-
-canvas.addEventListener("mousedown", e => {
-    if (!drawingEnabled) return;
-    drawing = true;
-    ctx.beginPath();
-    ctx.moveTo(e.offsetX, e.offsetY);
-});
-
-canvas.addEventListener("mousemove", e => {
-    if (!drawingEnabled || !drawing) return;
-    ctx.lineTo(e.offsetX, e.offsetY);
-    ctx.stroke();
-});
-
-canvas.addEventListener("mouseup", () => {
-    drawing = false;
-    saveWorkspace();
-});
+function toggleDraw(){drawingEnabled=!drawingEnabled;alert("Drawing: "+(drawingEnabled?"ON":"OFF"));}
+canvas.addEventListener("mousedown",e=>{if(!drawingEnabled)return;drawing=true;ctx.beginPath();ctx.moveTo(e.offsetX,e.offsetY)});
+canvas.addEventListener("mousemove",e=>{if(!drawingEnabled||!drawing)return;ctx.lineTo(e.offsetX,e.offsetY);ctx.stroke()});
+canvas.addEventListener("mouseup",()=>{drawing=false;saveWorkspace()});
 
 // ----------------------------
 // Background layers
 // ----------------------------
-function changeBG() {
-    const color = document.getElementById("bgColorPicker").value;
-    const layer = document.createElement("div");
-    layer.className = "bg-layer";
-    layer.style.background = color;
-    layer.style.opacity = "0.5";
-    workspace.appendChild(layer);
-    saveWorkspace();
-}
+function changeBG(){const color=document.getElementById("bgColorPicker").value;const layer=document.createElement("div");layer.className="bg-layer";layer.style.background=color;layer.style.opacity="0.5";workspace.appendChild(layer);saveWorkspace()}
 
 // ----------------------------
 // Add Text
 // ----------------------------
-function addText() {
-    const text = document.getElementById("textInput").value;
-    if (!text.trim()) return;
-    const div = document.createElement("div");
-    div.className = "text-element";
-    div.textContent = text;
-    div.style.left = "50px";  
-    div.style.top = "50px";  
-    div.style.fontSize = "24px";
-    div.style.color = "black";
-    makeDraggable(div);
-    workspace.appendChild(div);
-    saveWorkspace();
-}
+function addText(){const text=document.getElementById("textInput").value;if(!text.trim())return;const div=document.createElement("div");div.className="text-element";div.textContent=text;div.style.left="50px";div.style.top="50px";div.style.fontSize="24px";div.style.color="black";makeDraggable(div);workspace.appendChild(div);saveWorkspace()}
 
 // ----------------------------
 // Add Images
 // ----------------------------
-function addImage() {
-    const file = document.getElementById("imageInput").files[0];
-    if (!file) return;
-    const img = document.createElement("img");
-    img.src = URL.createObjectURL(file);
-    img.style.width = "200px";
-    img.style.left = Math.random() * (workspace.clientWidth - 200) + "px";
-    img.style.top = Math.random() * (workspace.clientHeight - 200) + "px";
-    makeDraggable(img);
-    workspace.appendChild(img);
-    saveWorkspace();
-}
-
-function spamImages() {
-    const files = document.getElementById("spamInput").files;
-    if (!files.length) return;
-    for (let file of files) {
-        const img = document.createElement("img");
-        img.src = URL.createObjectURL(file);
-        img.style.width = "120px";
-        img.style.left = Math.random() * (workspace.clientWidth - 120) + "px";
-        img.style.top = Math.random() * (workspace.clientHeight - 120) + "px";
-        makeDraggable(img);
-        workspace.appendChild(img);
-    }
-    saveWorkspace();
-}
+function addImage(){const file=document.getElementById("imageInput").files[0];if(!file)return;const img=document.createElement("img");img.src=URL.createObjectURL(file);img.style.width="200px";img.style.left=Math.random()*(workspace.clientWidth-200)+"px";img.style.top=Math.random()*(workspace.clientHeight-200)+"px";makeDraggable(img);workspace.appendChild(img);saveWorkspace()}
+function spamImages(){const files=document.getElementById("spamInput").files;if(!files.length)return;for(let file of files){const img=document.createElement("img");img.src=URL.createObjectURL(file);img.style.width="120px";img.style.left=Math.random()*(workspace.clientWidth-120)+"px";img.style.top=Math.random()*(workspace.clientHeight-120)+"px";makeDraggable(img);workspace.appendChild(img)}saveWorkspace()}
 
 // ----------------------------
 // Dragging logic
 // ----------------------------
-function makeDraggable(el) {
-    el.onmousedown = function (e) {
-        const shiftX = e.clientX - el.getBoundingClientRect().left;
-        const shiftY = e.clientY - el.getBoundingClientRect().top;
-        function moveAt(e) {
-            el.style.left = e.clientX - shiftX + "px";
-            el.style.top = e.clientY - shiftY + "px";
-        }
-        document.addEventListener("mousemove", moveAt);
-        document.onmouseup = () => {
-            document.removeEventListener("mousemove", moveAt);
-            document.onmouseup = null;
-            saveWorkspace();
-        };
-    };
-}
+function makeDraggable(el){el.onmousedown=function(e){const shiftX=e.clientX-el.getBoundingClientRect().left;const shiftY=e.clientY-el.getBoundingClientRect().top;function moveAt(e){el.style.left=e.clientX-shiftX+"px";el.style.top=e.clientY-shiftY+"px"}document.addEventListener("mousemove",moveAt);document.onmouseup=()=>{document.removeEventListener("mousemove",moveAt);document.onmouseup=null;saveWorkspace()}}}
 
 // Load workspace on startup
 loadWorkspace();
-
 </script>
 
 </body>
