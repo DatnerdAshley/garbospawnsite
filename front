@@ -34,7 +34,6 @@
             padding-bottom: 5px;
         }
 
-        /* All new stacked layers appear absolutely */
         .bg-layer {
             position: absolute;
             width: 100%;
@@ -100,6 +99,97 @@
     let drawing = false;
     let drawingEnabled = false;
 
+    // -----------------------------
+    // SAVE SYSTEM
+    // -----------------------------
+
+    function saveWorkspace() {
+        const data = {
+            bgLayers: [],
+            text: [],
+            images: [],
+            drawing: canvas.toDataURL()
+        };
+
+        // Save background layers
+        document.querySelectorAll(".bg-layer").forEach(layer => {
+            data.bgLayers.push({
+                color: layer.style.background,
+                opacity: layer.style.opacity
+            });
+        });
+
+        // Save text elements
+        document.querySelectorAll(".text-element").forEach(el => {
+            data.text.push({
+                text: el.textContent,
+                left: el.style.left,
+                top: el.style.top,
+                color: el.style.color,
+                fontSize: el.style.fontSize
+            });
+        });
+
+        // Save images
+        document.querySelectorAll("#workspace img").forEach(img => {
+            data.images.push({
+                src: img.src,
+                left: img.style.left,
+                top: img.style.top,
+                width: img.style.width
+            });
+        });
+
+        localStorage.setItem("workspaceData", JSON.stringify(data));
+        console.log("Workspace saved.");
+    }
+
+    function loadWorkspace() {
+        const data = JSON.parse(localStorage.getItem("workspaceData"));
+        if (!data) return;
+
+        // Restore background layers
+        data.bgLayers.forEach(layer => {
+            const div = document.createElement("div");
+            div.className = "bg-layer";
+            div.style.background = layer.color;
+            div.style.opacity = layer.opacity;
+            workspace.appendChild(div);
+        });
+
+        // Restore text
+        data.text.forEach(t => {
+            const div = document.createElement("div");
+            div.className = "text-element";
+            div.textContent = t.text;
+            div.style.left = t.left;
+            div.style.top = t.top;
+            div.style.color = t.color;
+            div.style.fontSize = t.fontSize;
+            makeDraggable(div);
+            workspace.appendChild(div);
+        });
+
+        // Restore images
+        data.images.forEach(im => {
+            const img = document.createElement("img");
+            img.src = im.src;
+            img.style.left = im.left;
+            img.style.top = im.top;
+            img.style.width = im.width;
+            makeDraggable(img);
+            workspace.appendChild(img);
+        });
+
+        // Restore drawing
+        const drawingImg = new Image();
+        drawingImg.src = data.drawing;
+        drawingImg.onload = () => ctx.drawImage(drawingImg, 0, 0);
+    }
+
+    // -----------------------------
+    // DRAWING
+    // -----------------------------
     function toggleDraw() {
         drawingEnabled = !drawingEnabled;
         alert("Drawing: " + (drawingEnabled ? "ON" : "OFF"));
@@ -116,28 +206,29 @@
         if (!drawingEnabled || !drawing) return;
         ctx.lineTo(e.offsetX, e.offsetY);
         ctx.stroke();
+        saveWorkspace();
     });
 
     canvas.addEventListener("mouseup", () => drawing = false);
 
-    // ---------------------------------------
-    // BACKGROUND STACKING LAYERS (NEW LOGIC)
-    // ---------------------------------------
+    // -----------------------------
+    // BACKGROUND
+    // -----------------------------
     function changeBG() {
         const color = document.getElementById("bgColorPicker").value;
 
         const layer = document.createElement("div");
         layer.className = "bg-layer";
         layer.style.background = color;
-        layer.style.opacity = "0.5"; // stack effect
+        layer.style.opacity = "0.5";
 
         workspace.appendChild(layer);
+        saveWorkspace();
     }
 
-    // ---------------------------------------
-    // TEXT STACKING (NEW LOGIC)
-    // Always in same position
-    // ---------------------------------------
+    // -----------------------------
+    // TEXT
+    // -----------------------------
     function addText() {
         const text = document.getElementById("textInput").value;
         if (!text.trim()) return;
@@ -146,29 +237,35 @@
         div.className = "text-element";
         div.textContent = text;
 
-        // Same coordinates for stacking
-        div.style.left = "50px";  
-        div.style.top = "50px";  
+        div.style.left = "50px";
+        div.style.top = "50px";
         div.style.fontSize = "24px";
         div.style.color = "black";
 
         makeDraggable(div);
         workspace.appendChild(div);
+        saveWorkspace();
     }
 
+    // -----------------------------
+    // IMAGES
+    // -----------------------------
     function addImage() {
         const file = document.getElementById("imageInput").files[0];
         if (!file) return;
 
-        const img = document.createElement("img");
-        img.src = URL.createObjectURL(file);
-        img.style.width = "200px";
-
-        img.style.left = Math.random() * (workspace.clientWidth - 200) + "px";
-        img.style.top = Math.random() * (workspace.clientHeight - 200) + "px";
-
-        makeDraggable(img);
-        workspace.appendChild(img);
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = document.createElement("img");
+            img.src = e.target.result;
+            img.style.width = "200px";
+            img.style.left = "100px";
+            img.style.top = "100px";
+            makeDraggable(img);
+            workspace.appendChild(img);
+            saveWorkspace();
+        };
+        reader.readAsDataURL(file);
     }
 
     function spamImages() {
@@ -176,27 +273,33 @@
         if (!files.length) return;
 
         for (let file of files) {
-            const img = document.createElement("img");
-            img.src = URL.createObjectURL(file);
-            img.style.width = "120px";
-
-            img.style.left = Math.random() * (workspace.clientWidth - 120) + "px";
-            img.style.top = Math.random() * (workspace.clientHeight - 120) + "px";
-
-            makeDraggable(img);
-            workspace.appendChild(img);
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.createElement("img");
+                img.src = e.target.result;
+                img.style.width = "120px";
+                img.style.left = Math.random() * 500 + "px";
+                img.style.top = Math.random() * 300 + "px";
+                makeDraggable(img);
+                workspace.appendChild(img);
+                saveWorkspace();
+            };
+            reader.readAsDataURL(file);
         }
     }
 
-    // Dragging logic
+    // -----------------------------
+    // DRAGGING
+    // -----------------------------
     function makeDraggable(el) {
-        el.onmousedown = function (e) {
+        el.onmousedown = function(e) {
             const shiftX = e.clientX - el.getBoundingClientRect().left;
             const shiftY = e.clientY - el.getBoundingClientRect().top;
 
             function moveAt(e) {
                 el.style.left = e.clientX - shiftX + "px";
                 el.style.top = e.clientY - shiftY + "px";
+                saveWorkspace();
             }
 
             document.addEventListener("mousemove", moveAt);
@@ -204,9 +307,14 @@
             document.onmouseup = () => {
                 document.removeEventListener("mousemove", moveAt);
                 document.onmouseup = null;
+                saveWorkspace();
             };
         };
     }
+
+    // Load saved workspace on startup
+    loadWorkspace();
+
 </script>
 
 </body>
